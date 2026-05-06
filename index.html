@@ -233,20 +233,46 @@
   }
   .menu-action-btn:hover { background: rgba(20,20,15,0.05); }
 
-  /* ---- Filter tabs (shared by pins + future panels) ---- */
-  .panel-tabs {
-    display: flex; flex-shrink: 0;
-    border-bottom: 1px solid rgba(20,20,15,0.08);
+  /* ---- Expandable filter bar ---- */
+  .filter-bar {
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(20,20,15,0.07);
   }
-  .panel-tab {
-    flex: 1; border: none; background: none;
-    font: inherit; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
-    padding: 10px 6px; cursor: pointer;
-    color: rgba(20,20,15,0.45);
-    border-bottom: 2px solid transparent;
-    transition: color 140ms, border-color 140ms;
+  .filter-toggle-btn {
+    width: 100%; border: none; background: none;
+    font: inherit; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 10px 16px; text-align: left; cursor: pointer;
+    color: rgba(20,20,15,0.5);
+    display: flex; align-items: center; gap: 6px;
+    transition: color 120ms;
   }
-  .panel-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .filter-toggle-btn:hover, .filter-toggle-btn.open { color: var(--ink); }
+  .filter-toggle-icon { font-style: normal; font-size: 13px; line-height: 1; }
+  .filter-active-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    background: var(--ink); color: var(--bg);
+    font-size: 9px; padding: 2px 8px 2px 7px; border-radius: 10px;
+  }
+  .filter-section {
+    display: none;
+    padding: 10px 16px 14px;
+    border-bottom: 1px solid rgba(20,20,15,0.07);
+    background: rgba(20,20,15,0.025);
+  }
+  .filter-section.open { display: block; }
+  .filter-group-label {
+    font-size: 9px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: rgba(20,20,15,0.42); margin-bottom: 8px;
+  }
+  .filter-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-pill {
+    border: 1px solid rgba(20,20,15,0.22); background: transparent;
+    color: var(--ink); font: inherit; font-size: 10px; letter-spacing: 0.02em;
+    padding: 5px 14px; border-radius: 20px; cursor: pointer;
+    transition: background 120ms, border-color 120ms, color 120ms;
+  }
+  .filter-pill.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
   /* Whirl: a stack of thin, dashed rings spinning at different rates */
   .whirl {
@@ -619,10 +645,20 @@
     <span class="countries-panel-title">Pins</span>
     <span class="countries-selected-count" id="pins-count-label"></span>
   </div>
-  <div class="panel-tabs">
-    <button class="panel-tab active" data-filter="all">All</button>
-    <button class="panel-tab" data-filter="visited">Visited</button>
-    <button class="panel-tab" data-filter="unvisited">Not visited</button>
+  <div class="filter-bar">
+    <button class="filter-toggle-btn" id="pins-filter-toggle">
+      <span class="filter-toggle-icon">+</span>
+      Filter
+      <span class="filter-active-chips" id="pins-filter-chips"></span>
+    </button>
+    <div class="filter-section" id="pins-filter-section">
+      <div class="filter-group-label">Status</div>
+      <div class="filter-pills">
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="visited">Visited</button>
+        <button class="filter-pill" data-filter="unvisited">Not visited</button>
+      </div>
+    </div>
   </div>
   <div class="countries-search-wrap">
     <input id="pins-search" type="text" placeholder="Search pins…" autocomplete="off" />
@@ -1630,13 +1666,23 @@ let pinsFilter = "all";
 
 function openPinsPanel() {
   closeMenu();
-  pinsFilter = "all";
-  document.querySelectorAll("#pins-panel .panel-tab").forEach(t =>
-    t.classList.toggle("active", t.dataset.filter === "all"));
+  setPinsFilter("all");
+  document.getElementById("pins-filter-section").classList.remove("open");
+  document.getElementById("pins-filter-toggle").classList.remove("open");
+  document.getElementById("pins-filter-toggle").querySelector(".filter-toggle-icon").textContent = "+";
   document.getElementById("pins-search").value = "";
   buildPinsList();
   document.getElementById("pins-panel").classList.add("open");
   document.getElementById("pins-overlay").classList.add("open");
+}
+function setPinsFilter(val) {
+  pinsFilter = val;
+  document.querySelectorAll("#pins-filter-section .filter-pill").forEach(p =>
+    p.classList.toggle("active", p.dataset.filter === val));
+  const chips = document.getElementById("pins-filter-chips");
+  chips.innerHTML = val !== "all"
+    ? `<span class="filter-chip">${val === "visited" ? "Visited" : "Not visited"}</span>`
+    : "";
 }
 function closePinsPanel() {
   document.getElementById("pins-panel").classList.remove("open");
@@ -1694,11 +1740,16 @@ document.getElementById("pins-btn").addEventListener("click", openPinsPanel);
 document.getElementById("pins-back-btn").addEventListener("click", closePinsPanel);
 document.getElementById("pins-overlay").addEventListener("click", closePinsPanel);
 document.getElementById("pins-search").addEventListener("input", buildPinsList);
-document.querySelectorAll("#pins-panel .panel-tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    pinsFilter = tab.dataset.filter;
-    document.querySelectorAll("#pins-panel .panel-tab").forEach(t =>
-      t.classList.toggle("active", t === tab));
+document.getElementById("pins-filter-toggle").addEventListener("click", () => {
+  const section = document.getElementById("pins-filter-section");
+  const btn = document.getElementById("pins-filter-toggle");
+  const open = section.classList.toggle("open");
+  btn.classList.toggle("open", open);
+  btn.querySelector(".filter-toggle-icon").textContent = open ? "−" : "+";
+});
+document.querySelectorAll("#pins-filter-section .filter-pill").forEach(pill => {
+  pill.addEventListener("click", () => {
+    setPinsFilter(pill.dataset.filter);
     buildPinsList();
   });
 });
