@@ -545,8 +545,10 @@
     transition: transform 200ms, box-shadow 200ms;
     box-shadow: 0 1px 3px rgba(0,0,0,0.25);
   }
-  .country-row.on .country-toggle { background: #2f5d3a; }
-  .country-row.on .country-toggle::after { transform: translateX(16px); }
+  .country-row.on .country-toggle,
+  .country-toggle.on { background: #2f5d3a; }
+  .country-row.on .country-toggle::after,
+  .country-toggle.on::after { transform: translateX(16px); }
 
   /* ---- City dots (diamond) ---- */
   svg.overlay .city-dot {
