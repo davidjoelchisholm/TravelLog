@@ -826,7 +826,11 @@ function buildDots() {
     addDotEl(i);
   });
 
-  tip.addEventListener("mouseenter", () => { tip._sticky = true; });
+  tip.addEventListener("mouseenter", () => {
+    tip._sticky = true;
+    tip._clickLocked = false;
+    clearTimeout(tip._lockTimer);
+  });
   tip.addEventListener("mouseleave", () => { tip._sticky = false; tip.classList.remove("show"); });
 }
 
@@ -866,9 +870,9 @@ function showTip(i) {
   }
 }
 function hideTip(i) {
-  dotEls[i].classList.remove("hover");
+  if (!tip._clickLocked) dotEls[i].classList.remove("hover");
   setTimeout(() => {
-    if (tip._sticky) return;
+    if (tip._sticky || tip._clickLocked) return;
     tip.classList.remove("show");
     overlay._halo.classList.remove("show");
     activeIdx = -1;
@@ -1229,8 +1233,16 @@ function addDotEl(i) {
   c.setAttribute("class", "dot");
   setDotShape(c, !!PLACES[i].visited);
   c.dataset.idx = i;
-  c.addEventListener("mouseenter", () => showTip(i));
+  c.addEventListener("mouseenter", () => { if (!tip._clickLocked) showTip(i); });
   c.addEventListener("mouseleave", () => hideTip(i));
+  c.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    showTip(i);
+    tip._clickLocked = true;
+    clearTimeout(tip._lockTimer);
+    tip._lockTimer = setTimeout(() => { tip._clickLocked = false; }, 3000);
+  });
   c.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     e.stopPropagation();
