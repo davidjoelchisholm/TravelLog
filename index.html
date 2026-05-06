@@ -38,80 +38,200 @@
     overflow: visible;
   }
 
-  /* Drop / paste zone for Google Maps URLs */
-  .drop {
+  /* ---- Bottom pin bar ---- */
+  .bottom-bar {
     position: fixed;
-    left: 50%;
-    bottom: 24px;
-    transform: translateX(-50%);
+    bottom: 0; left: 0; right: 0;
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 10px;
-    background: rgba(20,20,15,0.04);
-    border: 1px dashed rgba(20,20,15,0.35);
-    border-radius: 6px;
+    padding: 10px 16px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(243,240,234,0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(20,20,15,0.12);
+    font-size: 11px;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+    z-index: 10;
+    transition: background 140ms ease;
+  }
+  .bottom-bar.dragover { background: rgba(20,20,15,0.08); }
+  .bottom-bar .pin-label {
     font-size: 10px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: rgba(20,20,15,0.7);
-    z-index: 10;
-    transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+    color: rgba(20,20,15,0.5);
+    flex-shrink: 0;
   }
-  .drop.dragover {
-    background: rgba(20,20,15,0.10);
-    border-color: rgba(20,20,15,0.85);
-    color: rgba(20,20,15,1);
-  }
-  .drop input {
-    width: 320px;
+  .bottom-bar input {
+    flex: 1;
+    min-width: 0;
     border: none;
     background: transparent;
     outline: none;
     font: inherit;
+    font-size: 12px;
     color: var(--ink);
     text-transform: none;
     letter-spacing: 0;
     padding: 2px 0;
   }
-  .drop input::placeholder { color: rgba(20,20,15,0.45); }
-  .drop button {
-    border: 1px solid rgba(20,20,15,0.55);
+  .bottom-bar input::placeholder { color: rgba(20,20,15,0.38); }
+  .bottom-bar .add-btn {
+    flex-shrink: 0;
+    border: 1px solid rgba(20,20,15,0.5);
     background: transparent;
     color: var(--ink);
     font: inherit;
     font-size: 10px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    padding: 4px 10px;
+    padding: 6px 14px;
     border-radius: 4px;
     cursor: pointer;
-    transition: background 120ms ease, color 120ms ease;
+    transition: background 120ms, color 120ms;
   }
-  .drop button:hover { background: var(--ink); color: var(--bg); }
-  .drop button:disabled { opacity: 0.4; cursor: not-allowed; background: transparent; color: var(--ink); }
-  .drop .status {
+  .bottom-bar .add-btn:hover { background: var(--ink); color: var(--bg); }
+  .bottom-bar .add-btn:disabled { opacity: 0.35; cursor: not-allowed; background: transparent; color: var(--ink); }
+  .bottom-bar .status {
     font-size: 9px;
-    color: rgba(20,20,15,0.55);
-    min-width: 110px;
-  }
-  .drop .status.err { color: #b03a2e; }
-  .drop .status.ok  { color: #2a7a44; }
-  .drop .sep {
-    width: 1px;
-    height: 14px;
-    background: rgba(20,20,15,0.2);
+    color: rgba(20,20,15,0.5);
     flex-shrink: 0;
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .drop button.toggle { opacity: 0.35; }
-  .drop button.toggle.on { opacity: 1; }
-  #toggle-spin { padding: 4px 8px; line-height: 0; }
+  .bottom-bar .status.err { color: #b03a2e; }
+  .bottom-bar .status.ok  { color: #2a7a44; }
+
+  /* ---- Corner view controls (top-right) ---- */
+  .corner-controls {
+    position: fixed;
+    top: 14px; right: 14px;
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+  }
+  .corner-btn {
+    border: 1px solid rgba(20,20,15,0.25);
+    background: rgba(243,240,234,0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--ink);
+    font: inherit;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    opacity: 0.38;
+    transition: opacity 140ms, background 120ms;
+    line-height: 1;
+  }
+  .corner-btn.on { opacity: 1; }
+  .corner-btn:hover { background: rgba(243,240,234,1); opacity: 1; }
+  #toggle-spin { padding: 6px 8px; }
   #toggle-spin svg { display: block; }
   #toggle-spin .icon-locked { display: none; }
   #toggle-spin.on .icon-locked { display: none; }
   #toggle-spin.on .icon-unlocked { display: block; }
   #toggle-spin:not(.on) .icon-locked { display: block; }
   #toggle-spin:not(.on) .icon-unlocked { display: none; }
+
+  /* ---- Menu open button (top-left) ---- */
+  .menu-open-btn {
+    position: fixed;
+    top: 14px; left: 14px;
+    border: 1px solid rgba(20,20,15,0.25);
+    background: rgba(243,240,234,0.88);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--ink);
+    padding: 7px 9px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 10;
+    line-height: 0;
+    transition: background 120ms;
+  }
+  .menu-open-btn:hover { background: rgba(243,240,234,1); }
+
+  /* ---- Slide-up menu drawer ---- */
+  .menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20,20,15,0.3);
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  .menu-overlay.open { opacity: 1; pointer-events: auto; }
+  .menu-drawer {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--bg);
+    border-radius: 14px 14px 0 0;
+    z-index: 21;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transform: translateY(100%);
+    transition: transform 260ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .menu-drawer.open { transform: translateY(0); }
+  .menu-drawer-handle {
+    width: 36px; height: 4px;
+    background: rgba(20,20,15,0.18);
+    border-radius: 2px;
+    margin: 12px auto 0;
+  }
+  .menu-drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid rgba(20,20,15,0.08);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(20,20,15,0.55);
+  }
+  .menu-close-btn {
+    border: none;
+    background: none;
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    opacity: 0.45;
+    transition: opacity 120ms;
+  }
+  .menu-close-btn:hover { opacity: 1; }
+  .menu-drawer-body {
+    padding: 14px 20px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .menu-action-btn {
+    border: 1px solid rgba(20,20,15,0.22);
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 14px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 120ms;
+  }
+  .menu-action-btn:hover { background: rgba(20,20,15,0.05); }
 
   /* Whirl: a stack of thin, dashed rings spinning at different rates */
   .whirl {
@@ -327,31 +447,52 @@
   <div class="loading">loading</div>
 </div>
 
-<div class="drop" id="drop">
-  <span>+ Pin</span>
-  <input id="drop-input" type="text" placeholder="Paste a Google Maps link…" />
-  <button id="drop-add" type="button" disabled>Add</button>
+<!-- Bottom pin bar -->
+<div class="bottom-bar" id="drop">
+  <span class="pin-label">+ Pin</span>
+  <input id="drop-input" type="text" placeholder="Paste a Google Maps link or lat, lng…" />
+  <button id="drop-add" class="add-btn" type="button" disabled>Add</button>
   <span class="status" id="drop-status"></span>
-  <span class="sep"></span>
-  <button id="export-btn" type="button">Export</button>
-  <button id="import-btn" type="button">Import</button>
-  <input id="import-input" type="file" accept=".json" style="display:none" />
-  <span class="sep"></span>
-  <button id="toggle-visited" type="button" class="toggle on">★ Visited</button>
-  <button id="toggle-unvisited" type="button" class="toggle on">● Saved</button>
-  <span class="sep"></span>
-  <button id="toggle-spin" type="button" class="toggle on" title="Lock/unlock spin">
-    <!-- unlocked: shackle open -->
+</div>
+
+<!-- Top-right: view toggles + spin lock -->
+<div class="corner-controls">
+  <button id="toggle-visited" type="button" class="corner-btn on">★ Visited</button>
+  <button id="toggle-unvisited" type="button" class="corner-btn on">● Saved</button>
+  <button id="toggle-spin" type="button" class="corner-btn on" title="Lock/unlock spin">
     <svg class="icon-unlocked" width="13" height="15" viewBox="0 0 13 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3.5 6.5V4.5a3 3 0 0 1 6 0"/>
       <rect x="1" y="6.5" width="11" height="8" rx="1.5"/>
     </svg>
-    <!-- locked: shackle closed -->
     <svg class="icon-locked" width="13" height="15" viewBox="0 0 13 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M3.5 6.5V4.5a3 3 0 0 1 6 0v2"/>
       <rect x="1" y="6.5" width="11" height="8" rx="1.5"/>
     </svg>
   </button>
+</div>
+
+<!-- Top-left: menu button -->
+<button class="menu-open-btn" id="menu-open-btn" type="button" aria-label="Menu">
+  <svg width="16" height="12" viewBox="0 0 16 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+    <line x1="0" y1="1" x2="16" y2="1"/>
+    <line x1="0" y1="6" x2="16" y2="6"/>
+    <line x1="0" y1="11" x2="16" y2="11"/>
+  </svg>
+</button>
+
+<!-- Slide-up menu drawer -->
+<div class="menu-overlay" id="menu-overlay"></div>
+<div class="menu-drawer" id="menu-drawer">
+  <div class="menu-drawer-handle"></div>
+  <div class="menu-drawer-header">
+    <span>Options</span>
+    <button class="menu-close-btn" id="menu-close-btn" type="button">✕</button>
+  </div>
+  <div class="menu-drawer-body">
+    <button id="export-btn" type="button" class="menu-action-btn">↓ Export backup</button>
+    <button id="import-btn" type="button" class="menu-action-btn">↑ Import backup</button>
+    <input id="import-input" type="file" accept=".json" style="display:none" />
+  </div>
 </div>
 
 <!-- d3-geo + topojson-client (inlined) -->
@@ -1226,6 +1367,21 @@ function start() {
   }
   requestAnimationFrame(tick);
 }
+
+/* ---- Menu drawer ---- */
+const menuOverlay = document.getElementById("menu-overlay");
+const menuDrawer  = document.getElementById("menu-drawer");
+function openMenu() {
+  menuOverlay.classList.add("open");
+  menuDrawer.classList.add("open");
+}
+function closeMenu() {
+  menuOverlay.classList.remove("open");
+  menuDrawer.classList.remove("open");
+}
+document.getElementById("menu-open-btn").addEventListener("click", openMenu);
+document.getElementById("menu-close-btn").addEventListener("click", closeMenu);
+menuOverlay.addEventListener("click", closeMenu);
 </script>
 </body>
 </html>
