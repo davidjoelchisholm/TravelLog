@@ -934,6 +934,7 @@ function pointerXY(e) {
   return { x: e.clientX - rect.left, y: e.clientY - rect.top };
 }
 function onDown(e) {
+  if (tip.classList.contains("show")) return;
   const isTouch = e.pointerType === "touch";
   if (!isTouch && e.button !== 1) return;
   if (isTouch) {
@@ -1539,7 +1540,7 @@ function start() {
   function tick(now) {
     const dt = (now - last) / 1000;
     last = now;
-    if (autoSpin && !dragging) {
+    if (autoSpin && !dragging && !tip.classList.contains("show")) {
       const r = projection.rotate();
       r[0] = (r[0] + speed * dt) % 360;
       projection.rotate(r);
