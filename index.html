@@ -1631,13 +1631,15 @@ function buildCountryList(filter) {
   updateCountriesCount();
 }
 
-function flyToRotation(lambda, phi) {
+function flyToRotation(lambda, phi, targetRadius, onComplete) {
   const startRot = projection.rotate().slice();
   let dLambda = lambda - startRot[0];
   while (dLambda > 180) dLambda -= 360;
   while (dLambda < -180) dLambda += 360;
   const endRot = [startRot[0] + dLambda, Math.max(-89, Math.min(89, phi)), startRot[2]];
-  const duration = 800;
+  const startRadius = RADIUS;
+  const endRadius = targetRadius != null ? Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, targetRadius)) : RADIUS;
+  const duration = 900;
   const t0 = performance.now();
   autoSpin = false;
   clearTimeout(resumeTimer);
@@ -1649,16 +1651,27 @@ function flyToRotation(lambda, phi) {
       startRot[1] + (endRot[1] - startRot[1]) * e,
       startRot[2]
     ]);
-    if (t < 1) requestAnimationFrame(animFrame);
-    else resumeTimer = setTimeout(() => { if (!spinLocked) autoSpin = true; }, 8000);
+    if (endRadius !== startRadius) {
+      RADIUS = startRadius + (endRadius - startRadius) * e;
+      projection.scale(RADIUS);
+      resizeCanvas();
+      stage.style.setProperty("--whirl-scale", (RADIUS / BASE_RADIUS).toFixed(3));
+    }
+    if (t < 1) { requestAnimationFrame(animFrame); return; }
+    if (onComplete) onComplete();
+    resumeTimer = setTimeout(() => { if (!spinLocked) autoSpin = true; }, 8000);
   })(t0);
 }
 function flyToCountry(feature) {
   const c = d3.geoCentroid(feature);
   flyToRotation(-c[0], -c[1]);
 }
-function flyToPin(place) {
-  flyToRotation(-place.lng, -place.lat);
+function flyToPin(place, idx) {
+  const zoomTarget = 700;
+  flyToRotation(-place.lng, -place.lat, zoomTarget, () => {
+    updateDots();
+    if (idx != null && idx >= 0) showTip(idx);
+  });
 }
 
 /* ---- Pins panel ---- */
@@ -1710,7 +1723,7 @@ function buildPinsList() {
     row.innerHTML = `<span class="country-row-name">${p.name}</span><div class="country-toggle"></div>`;
     row.querySelector(".country-row-name").addEventListener("click", () => {
       closePinsPanel();
-      flyToPin(p);
+      flyToPin(p, idx);
     });
     row.querySelector(".country-toggle").addEventListener("click", (e) => {
       e.stopPropagation();
