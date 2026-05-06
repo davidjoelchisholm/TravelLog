@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Globe loader</title>
 <style>
   :root {
@@ -25,7 +26,7 @@
     overflow: hidden;
   }
 
-  .stage { position: relative; width: 600px; height: 600px; }
+  .stage { position: relative; width: 600px; height: 600px; touch-action: none; }
   .globe-wrap { position: absolute; inset: 50% auto auto 50%; transform: translate(-50%,-50%); }
   canvas.globe { display: block; cursor: default; touch-action: none; user-select: none; }
   canvas.globe.dragging { cursor: grabbing; }
@@ -596,17 +597,43 @@ function updateDots() {
   if (activeIdx >= 0) positionTipAt(activeIdx);
 }
 
-/* ---- Middle-click drag to rotate ---- */
+/* ---- Drag to rotate + pinch to zoom ---- */
 let dragging = false;
 let dragStart = null;
+let dragMoved = false;
 let autoSpin = true;
 let spinLocked = false;
 let resumeTimer = null;
+const activePointers = new Map();
+let pinchStartDist = null;
+let pinchStartRadius = null;
 
+function getPinchDist() {
+  const pts = [...activePointers.values()];
+  const dx = pts[0][0] - pts[1][0], dy = pts[0][1] - pts[1][1];
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function pointerXY(e) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
 function onDown(e) {
-  if (e.button !== 1) return;
+  const isTouch = e.pointerType === "touch";
+  if (!isTouch && e.button !== 1) return;
+  if (isTouch) {
+    canvas.setPointerCapture(e.pointerId);
+    activePointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (activePointers.size >= 2) {
+      dragging = false;
+      canvas.classList.remove("dragging");
+      pinchStartDist = getPinchDist();
+      pinchStartRadius = RADIUS;
+      return;
+    }
+  }
   const pt = pointerXY(e);
   dragging = true;
+  dragMoved = false;
   autoSpin = false;
   clearTimeout(resumeTimer);
   dragStart = { x: pt.x, y: pt.y, rot: projection.rotate().slice(), moved: false };
@@ -614,12 +641,26 @@ function onDown(e) {
   e.preventDefault();
 }
 function onMove(e) {
+  if (e.pointerType === "touch") {
+    activePointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (activePointers.size >= 2 && pinchStartDist !== null) {
+      const factor = getPinchDist() / pinchStartDist;
+      RADIUS = Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, pinchStartRadius * factor));
+      projection.scale(RADIUS);
+      resizeCanvas();
+      stage.style.setProperty("--whirl-scale", (RADIUS / BASE_RADIUS).toFixed(3));
+      autoSpin = false;
+      clearTimeout(resumeTimer);
+      e.preventDefault();
+      return;
+    }
+  }
   if (!dragging) return;
   const pt = pointerXY(e);
-  const dx = pt.x - dragStart.x;
-  const dy = pt.y - dragStart.y;
+  const dx = pt.x - dragStart.x, dy = pt.y - dragStart.y;
   if (!dragStart.moved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
     dragStart.moved = true;
+    dragMoved = true;
     if (activeIdx >= 0) {
       tip.classList.remove("show");
       overlay._halo.classList.remove("show");
@@ -629,23 +670,20 @@ function onMove(e) {
   }
   const k = 0.55;
   const lambda = dragStart.rot[0] + dx * k;
-  let phi      = dragStart.rot[1] - dy * k;
+  let phi = dragStart.rot[1] - dy * k;
   phi = Math.max(-89, Math.min(89, phi));
   projection.rotate([lambda, phi, dragStart.rot[2]]);
   e.preventDefault();
 }
-function onUp() {
+function onUp(e) {
+  if (e.pointerType === "touch") {
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) { pinchStartDist = null; pinchStartRadius = null; }
+  }
   if (!dragging) return;
   dragging = false;
   canvas.classList.remove("dragging");
   resumeTimer = setTimeout(() => { if (!spinLocked) autoSpin = true; }, 8000);
-}
-function pointerXY(e) {
-  const rect = canvas.getBoundingClientRect();
-  const t = e.touches && e.touches[0];
-  const cx = t ? t.clientX : e.clientX;
-  const cy = t ? t.clientY : e.clientY;
-  return { x: cx - rect.left, y: cy - rect.top };
 }
 
 // Right-click on globe surface → show country name briefly
@@ -694,9 +732,10 @@ function positionCountryTip() {
   countryTip.style.top  = (stageH / 2 - SIZE / 2 + proj[1]) + "px";
 }
 
-// Left-click on globe → toggle country sage-green selection
+// Left-click / tap on globe → toggle country sage-green selection
 canvas.addEventListener("click", (e) => {
   if (e.button !== 0) return;
+  if (dragMoved) { dragMoved = false; return; }
   if (!countries) return;
   const pt = pointerXY(e);
   const lonlat = projection.invert([pt.x, pt.y]);
