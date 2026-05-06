@@ -550,19 +550,19 @@
 
   /* ---- City dots (diamond) ---- */
   svg.overlay .city-dot {
-    fill: #c87f0a;
+    fill: #888888;
     stroke: var(--bg);
     stroke-width: 0.5;
     pointer-events: auto;
     cursor: pointer;
     transition: fill 160ms ease;
   }
-  svg.overlay .city-dot.visited { fill: #2f5d3a; }
+  svg.overlay .city-dot.visited { fill: #f5c518; }
   svg.overlay .city-dot.hover {
-    fill: oklch(52% 0.22 55);
+    fill: #e6b800;
     filter:
-      drop-shadow(0 0 1.5px oklch(65% 0.22 55 / 0.95))
-      drop-shadow(0 0 5px  oklch(65% 0.22 55 / 0.7));
+      drop-shadow(0 0 1.5px rgba(245,197,24,0.95))
+      drop-shadow(0 0 5px  rgba(245,197,24,0.7));
   }
   .menu-toggle-row {
     display: flex; align-items: center; justify-content: space-between;
