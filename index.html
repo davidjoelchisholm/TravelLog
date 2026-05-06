@@ -233,6 +233,21 @@
   }
   .menu-action-btn:hover { background: rgba(20,20,15,0.05); }
 
+  /* ---- Filter tabs (shared by pins + future panels) ---- */
+  .panel-tabs {
+    display: flex; flex-shrink: 0;
+    border-bottom: 1px solid rgba(20,20,15,0.08);
+  }
+  .panel-tab {
+    flex: 1; border: none; background: none;
+    font: inherit; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 10px 6px; cursor: pointer;
+    color: rgba(20,20,15,0.45);
+    border-bottom: 2px solid transparent;
+    transition: color 140ms, border-color 140ms;
+  }
+  .panel-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
   /* Whirl: a stack of thin, dashed rings spinning at different rates */
   .whirl {
     position: absolute;
@@ -574,6 +589,7 @@
     <button class="menu-close-btn" id="menu-close-btn" type="button">✕</button>
   </div>
   <div class="menu-drawer-body">
+    <button id="pins-btn" type="button" class="menu-action-btn">📍 Pins <span id="menu-pins-count"></span></button>
     <button id="countries-visited-btn" type="button" class="menu-action-btn">🌍 Countries visited <span id="menu-countries-count"></span></button>
     <button id="export-btn" type="button" class="menu-action-btn">↓ Export backup</button>
     <button id="import-btn" type="button" class="menu-action-btn">↑ Import backup</button>
@@ -593,6 +609,25 @@
     <input id="countries-search" type="text" placeholder="Search countries…" autocomplete="off" />
   </div>
   <div class="countries-list" id="countries-list"></div>
+</div>
+
+<!-- Pins panel -->
+<div class="countries-overlay" id="pins-overlay"></div>
+<div class="countries-panel" id="pins-panel">
+  <div class="countries-panel-header">
+    <button class="countries-back-btn" id="pins-back-btn">←</button>
+    <span class="countries-panel-title">Pins</span>
+    <span class="countries-selected-count" id="pins-count-label"></span>
+  </div>
+  <div class="panel-tabs">
+    <button class="panel-tab active" data-filter="all">All</button>
+    <button class="panel-tab" data-filter="visited">Visited</button>
+    <button class="panel-tab" data-filter="unvisited">Not visited</button>
+  </div>
+  <div class="countries-search-wrap">
+    <input id="pins-search" type="text" placeholder="Search pins…" autocomplete="off" />
+  </div>
+  <div class="countries-list" id="pins-list"></div>
 </div>
 
 <!-- d3-geo + topojson-client (inlined) -->
@@ -1560,13 +1595,12 @@ function buildCountryList(filter) {
   updateCountriesCount();
 }
 
-function flyToCountry(feature) {
-  const centroid = d3.geoCentroid(feature);
+function flyToRotation(lambda, phi) {
   const startRot = projection.rotate().slice();
-  let dLambda = -centroid[0] - startRot[0];
+  let dLambda = lambda - startRot[0];
   while (dLambda > 180) dLambda -= 360;
   while (dLambda < -180) dLambda += 360;
-  const endRot = [startRot[0] + dLambda, Math.max(-89, Math.min(89, -centroid[1])), startRot[2]];
+  const endRot = [startRot[0] + dLambda, Math.max(-89, Math.min(89, phi)), startRot[2]];
   const duration = 800;
   const t0 = performance.now();
   autoSpin = false;
@@ -1583,6 +1617,91 @@ function flyToCountry(feature) {
     else resumeTimer = setTimeout(() => { if (!spinLocked) autoSpin = true; }, 8000);
   })(t0);
 }
+function flyToCountry(feature) {
+  const c = d3.geoCentroid(feature);
+  flyToRotation(-c[0], -c[1]);
+}
+function flyToPin(place) {
+  flyToRotation(-place.lng, -place.lat);
+}
+
+/* ---- Pins panel ---- */
+let pinsFilter = "all";
+
+function openPinsPanel() {
+  closeMenu();
+  pinsFilter = "all";
+  document.querySelectorAll("#pins-panel .panel-tab").forEach(t =>
+    t.classList.toggle("active", t.dataset.filter === "all"));
+  document.getElementById("pins-search").value = "";
+  buildPinsList();
+  document.getElementById("pins-panel").classList.add("open");
+  document.getElementById("pins-overlay").classList.add("open");
+}
+function closePinsPanel() {
+  document.getElementById("pins-panel").classList.remove("open");
+  document.getElementById("pins-overlay").classList.remove("open");
+}
+function buildPinsList() {
+  const list = document.getElementById("pins-list");
+  list.innerHTML = "";
+  const q = (document.getElementById("pins-search").value || "").toLowerCase();
+  const userPins = PLACES.filter(p => !p.seed);
+  const filtered = userPins.filter(p => {
+    if (pinsFilter === "visited" && !p.visited) return false;
+    if (pinsFilter === "unvisited" && p.visited) return false;
+    return !q || p.name.toLowerCase().includes(q);
+  });
+  if (!filtered.length) {
+    list.innerHTML = `<div style="padding:24px 16px;font-size:12px;color:rgba(20,20,15,0.45);">No pins found</div>`;
+    updatePinsCount();
+    return;
+  }
+  for (const p of filtered) {
+    const idx = PLACES.indexOf(p);
+    const row = document.createElement("div");
+    row.className = "country-row" + (p.visited ? " on" : "");
+    row.innerHTML = `<span class="country-row-name">${p.name}</span><div class="country-toggle"></div>`;
+    row.querySelector(".country-row-name").addEventListener("click", () => {
+      closePinsPanel();
+      flyToPin(p);
+    });
+    row.querySelector(".country-toggle").addEventListener("click", (e) => {
+      e.stopPropagation();
+      p.visited = !p.visited;
+      row.classList.toggle("on", p.visited);
+      if (idx >= 0 && dotEls[idx]) setDotShape(dotEls[idx], p.visited);
+      saveUserPlaces();
+      updatePinsCount();
+      if (pinsFilter !== "all") buildPinsList();
+    });
+    list.appendChild(row);
+  }
+  updatePinsCount();
+}
+function updatePinsCount() {
+  const userPins = PLACES.filter(p => !p.seed);
+  const visited = userPins.filter(p => p.visited).length;
+  const menuEl = document.getElementById("menu-pins-count");
+  if (menuEl) menuEl.textContent = userPins.length ? `(${visited}/${userPins.length})` : "";
+  const countEl = document.getElementById("pins-count-label");
+  if (countEl) {
+    const showing = document.querySelectorAll("#pins-list .country-row").length;
+    countEl.textContent = showing < userPins.length ? `${showing} shown` : `${visited} visited`;
+  }
+}
+document.getElementById("pins-btn").addEventListener("click", openPinsPanel);
+document.getElementById("pins-back-btn").addEventListener("click", closePinsPanel);
+document.getElementById("pins-overlay").addEventListener("click", closePinsPanel);
+document.getElementById("pins-search").addEventListener("input", buildPinsList);
+document.querySelectorAll("#pins-panel .panel-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    pinsFilter = tab.dataset.filter;
+    document.querySelectorAll("#pins-panel .panel-tab").forEach(t =>
+      t.classList.toggle("active", t === tab));
+    buildPinsList();
+  });
+});
 
 function refreshCountryList() {
   const panel = document.getElementById("countries-panel");
