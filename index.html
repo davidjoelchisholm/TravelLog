@@ -421,6 +421,84 @@
     text-transform: uppercase;
   }
   .stage.ready .loading { display: none; }
+
+  /* ---- Countries panel ---- */
+  .countries-overlay {
+    position: fixed; inset: 0;
+    background: rgba(20,20,15,0.3);
+    z-index: 22;
+    opacity: 0; pointer-events: none;
+    transition: opacity 200ms ease;
+  }
+  .countries-overlay.open { opacity: 1; pointer-events: auto; }
+  .countries-panel {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 23;
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 280ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .countries-panel.open { transform: translateX(0); }
+  .countries-panel-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 16px 10px;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    border-bottom: 1px solid rgba(20,20,15,0.1);
+    flex-shrink: 0;
+  }
+  .countries-back-btn {
+    border: none; background: none; color: var(--ink);
+    font: inherit; font-size: 18px; line-height: 1;
+    cursor: pointer; padding: 2px 6px 2px 0; opacity: 0.7;
+  }
+  .countries-back-btn:hover { opacity: 1; }
+  .countries-panel-title {
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; flex: 1;
+  }
+  .countries-selected-count {
+    font-size: 10px; color: rgba(20,20,15,0.5); letter-spacing: 0.02em;
+  }
+  .countries-search-wrap {
+    padding: 10px 16px 8px; flex-shrink: 0;
+    border-bottom: 1px solid rgba(20,20,15,0.07);
+  }
+  .countries-search-wrap input {
+    width: 100%; box-sizing: border-box;
+    border: 1px solid rgba(20,20,15,0.18);
+    border-radius: 5px;
+    background: rgba(20,20,15,0.03);
+    font: inherit; font-size: 12px;
+    color: var(--ink); padding: 8px 10px; outline: none;
+  }
+  .countries-search-wrap input::placeholder { color: rgba(20,20,15,0.38); }
+  .countries-list {
+    flex: 1; overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .country-row {
+    display: flex; align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(20,20,15,0.06);
+    cursor: pointer; user-select: none;
+    transition: background 100ms;
+  }
+  .country-row:active { background: rgba(20,20,15,0.04); }
+  .country-row-name { flex: 1; font-size: 13px; }
+  .country-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    background: rgba(20,20,15,0.15); border-radius: 11px;
+    position: relative; transition: background 200ms;
+  }
+  .country-toggle::after {
+    content: ""; position: absolute;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; top: 3px; left: 3px;
+    transition: transform 200ms, box-shadow 200ms;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  }
+  .country-row.on .country-toggle { background: #2f5d3a; }
+  .country-row.on .country-toggle::after { transform: translateX(16px); }
 </style>
 </head>
 <body>
@@ -489,10 +567,25 @@
     <button class="menu-close-btn" id="menu-close-btn" type="button">✕</button>
   </div>
   <div class="menu-drawer-body">
+    <button id="countries-visited-btn" type="button" class="menu-action-btn">🌍 Countries visited <span id="menu-countries-count"></span></button>
     <button id="export-btn" type="button" class="menu-action-btn">↓ Export backup</button>
     <button id="import-btn" type="button" class="menu-action-btn">↑ Import backup</button>
     <input id="import-input" type="file" accept=".json" style="display:none" />
   </div>
+</div>
+
+<!-- Countries panel (slides in from right) -->
+<div class="countries-overlay" id="countries-overlay"></div>
+<div class="countries-panel" id="countries-panel">
+  <div class="countries-panel-header">
+    <button class="countries-back-btn" id="countries-back-btn">←</button>
+    <span class="countries-panel-title">Countries visited</span>
+    <span class="countries-selected-count" id="countries-selected-count"></span>
+  </div>
+  <div class="countries-search-wrap">
+    <input id="countries-search" type="text" placeholder="Search countries…" autocomplete="off" />
+  </div>
+  <div class="countries-list" id="countries-list"></div>
 </div>
 
 <!-- d3-geo + topojson-client (inlined) -->
@@ -886,6 +979,7 @@ canvas.addEventListener("click", (e) => {
       if (selectedCountries.has(f.id)) selectedCountries.delete(f.id);
       else selectedCountries.add(f.id);
       saveSelected();
+      refreshCountryList();
       break;
     }
   }
@@ -1367,6 +1461,121 @@ function start() {
   }
   requestAnimationFrame(tick);
 }
+
+/* ---- Country name lookup (ISO 3166-1 numeric) ---- */
+const COUNTRY_NAMES = {
+  4:"Afghanistan",8:"Albania",12:"Algeria",20:"Andorra",24:"Angola",28:"Antigua and Barbuda",
+  32:"Argentina",36:"Australia",40:"Austria",31:"Azerbaijan",44:"Bahamas",48:"Bahrain",
+  50:"Bangladesh",52:"Barbados",112:"Belarus",56:"Belgium",84:"Belize",204:"Benin",
+  64:"Bhutan",68:"Bolivia",70:"Bosnia and Herzegovina",72:"Botswana",76:"Brazil",
+  96:"Brunei",100:"Bulgaria",854:"Burkina Faso",108:"Burundi",132:"Cabo Verde",
+  116:"Cambodia",120:"Cameroon",124:"Canada",140:"Central African Republic",148:"Chad",
+  152:"Chile",156:"China",170:"Colombia",174:"Comoros",180:"DR Congo",178:"Rep. Congo",
+  188:"Costa Rica",384:"Côte d'Ivoire",191:"Croatia",192:"Cuba",196:"Cyprus",203:"Czechia",
+  208:"Denmark",262:"Djibouti",214:"Dominican Republic",218:"Ecuador",818:"Egypt",
+  222:"El Salvador",226:"Equatorial Guinea",232:"Eritrea",233:"Estonia",748:"Eswatini",
+  231:"Ethiopia",242:"Fiji",246:"Finland",250:"France",266:"Gabon",270:"Gambia",
+  268:"Georgia",276:"Germany",288:"Ghana",300:"Greece",308:"Grenada",320:"Guatemala",
+  324:"Guinea",624:"Guinea-Bissau",332:"Haiti",340:"Honduras",348:"Hungary",352:"Iceland",
+  356:"India",360:"Indonesia",364:"Iran",368:"Iraq",372:"Ireland",376:"Israel",
+  380:"Italy",388:"Jamaica",392:"Japan",400:"Jordan",398:"Kazakhstan",404:"Kenya",
+  296:"Kiribati",408:"North Korea",410:"South Korea",414:"Kuwait",417:"Kyrgyzstan",
+  418:"Laos",422:"Lebanon",426:"Lesotho",430:"Liberia",434:"Libya",438:"Liechtenstein",
+  440:"Lithuania",442:"Luxembourg",450:"Madagascar",454:"Malawi",458:"Malaysia",
+  462:"Maldives",466:"Mali",470:"Malta",478:"Mauritania",480:"Mauritius",484:"Mexico",
+  492:"Monaco",496:"Mongolia",504:"Morocco",508:"Mozambique",104:"Myanmar",516:"Namibia",
+  524:"Nepal",528:"Netherlands",554:"New Zealand",558:"Nicaragua",562:"Niger",566:"Nigeria",
+  807:"North Macedonia",578:"Norway",512:"Oman",586:"Pakistan",591:"Panama",
+  598:"Papua New Guinea",600:"Paraguay",604:"Peru",608:"Philippines",616:"Poland",
+  620:"Portugal",634:"Qatar",642:"Romania",643:"Russia",646:"Rwanda",682:"Saudi Arabia",
+  686:"Senegal",694:"Sierra Leone",703:"Slovakia",705:"Slovenia",706:"Somalia",
+  710:"South Africa",728:"South Sudan",724:"Spain",144:"Sri Lanka",729:"Sudan",
+  740:"Suriname",752:"Sweden",756:"Switzerland",760:"Syria",762:"Tajikistan",
+  834:"Tanzania",764:"Thailand",626:"Timor-Leste",768:"Togo",780:"Trinidad and Tobago",
+  788:"Tunisia",792:"Turkey",795:"Turkmenistan",800:"Uganda",804:"Ukraine",
+  784:"United Arab Emirates",826:"United Kingdom",840:"United States",858:"Uruguay",
+  860:"Uzbekistan",862:"Venezuela",704:"Vietnam",887:"Yemen",894:"Zambia",716:"Zimbabwe",
+  344:"Hong Kong",446:"Macao",158:"Taiwan",275:"Palestine",659:"St Kitts and Nevis",
+  662:"St Lucia",670:"St Vincent and the Grenadines",674:"San Marino",678:"São Tomé and Príncipe",
+  336:"Vatican City",882:"Samoa",90:"Solomon Islands",548:"Vanuatu",585:"Palau",
+  583:"Micronesia",584:"Marshall Islands",520:"Nauru",798:"Tuvalu"
+};
+function getCountryName(id) { return COUNTRY_NAMES[+id] || String(id); }
+
+/* ---- Countries panel ---- */
+function openCountriesPanel() {
+  closeMenu();
+  buildCountryList("");
+  document.getElementById("countries-panel").classList.add("open");
+  document.getElementById("countries-overlay").classList.add("open");
+  document.getElementById("countries-search").value = "";
+  document.getElementById("countries-search").focus();
+}
+function closeCountriesPanel() {
+  document.getElementById("countries-panel").classList.remove("open");
+  document.getElementById("countries-overlay").classList.remove("open");
+}
+
+function buildCountryList(filter) {
+  const list = document.getElementById("countries-list");
+  list.innerHTML = "";
+  if (!countries) { list.textContent = "Globe still loading…"; return; }
+  const q = (filter || "").toLowerCase();
+  const items = countries.features
+    .map(f => ({ id: f.id, name: getCountryName(f.id) }))
+    .filter(c => !q || c.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  for (const { id, name } of items) {
+    const row = document.createElement("div");
+    const on = selectedCountries.has(id);
+    row.className = "country-row" + (on ? " on" : "");
+    row.dataset.id = id;
+    row.innerHTML = `<span class="country-row-name">${name}</span><div class="country-toggle"></div>`;
+    row.addEventListener("click", () => {
+      if (selectedCountries.has(id)) selectedCountries.delete(id);
+      else selectedCountries.add(id);
+      row.classList.toggle("on", selectedCountries.has(id));
+      saveSelected();
+      draw();
+      updateCountriesCount();
+    });
+    list.appendChild(row);
+  }
+  updateCountriesCount();
+}
+
+function refreshCountryList() {
+  const panel = document.getElementById("countries-panel");
+  if (!panel.classList.contains("open")) return;
+  panel.querySelectorAll(".country-row").forEach(row => {
+    const id = row.dataset.id;
+    const on = selectedCountries.has(isNaN(+id) ? id : +id);
+    row.classList.toggle("on", on);
+  });
+  updateCountriesCount();
+}
+
+function updateCountriesCount() {
+  const n = selectedCountries.size;
+  const label = n === 1 ? "1 country" : `${n} countries`;
+  const el = document.getElementById("countries-selected-count");
+  if (el) el.textContent = label;
+  const menuEl = document.getElementById("menu-countries-count");
+  if (menuEl) menuEl.textContent = n ? `(${n})` : "";
+}
+
+document.getElementById("countries-visited-btn").addEventListener("click", openCountriesPanel);
+document.getElementById("countries-back-btn").addEventListener("click", closeCountriesPanel);
+document.getElementById("countries-overlay").addEventListener("click", closeCountriesPanel);
+document.getElementById("countries-search").addEventListener("input", (e) => {
+  buildCountryList(e.target.value);
+});
+
+(function waitForCountries() {
+  if (countries) { updateCountriesCount(); return; }
+  setTimeout(waitForCountries, 200);
+})();
 
 /* ---- Menu drawer ---- */
 const menuOverlay = document.getElementById("menu-overlay");
