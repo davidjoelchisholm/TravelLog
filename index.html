@@ -1165,7 +1165,7 @@ function buildCityDots() {
 function addCityDotEl(i) {
   const c = document.createElementNS("http://www.w3.org/2000/svg", "path");
   c.setAttribute("class", "dot city-dot" + (CITIES[i].visited ? " visited" : ""));
-  c.setAttribute("d", "M 0 -3.4 L 2.7 0 L 0 3.4 L -2.7 0 Z");
+  c.setAttribute("d", "M 0 -5.0 L 4.0 0 L 0 5.0 L -4.0 0 Z");
   c.dataset.cityIdx = i;
   c.addEventListener("mouseenter", () => { if (!tip._clickLocked) showCityTip(i); });
   c.addEventListener("mouseleave", () => hideCityTip(i));
