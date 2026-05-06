@@ -1697,7 +1697,7 @@ function buildPinsList() {
     if (pinsFilter === "visited" && !p.visited) return false;
     if (pinsFilter === "unvisited" && p.visited) return false;
     return !q || p.name.toLowerCase().includes(q);
-  });
+  }).sort((a, b) => a.name.localeCompare(b.name));
   if (!filtered.length) {
     list.innerHTML = `<div style="padding:24px 16px;font-size:12px;color:rgba(20,20,15,0.45);">No pins found</div>`;
     updatePinsCount();
