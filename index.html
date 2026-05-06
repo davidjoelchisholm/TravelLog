@@ -647,10 +647,6 @@
     <button id="pins-btn" type="button" class="menu-action-btn">📍 Pins <span id="menu-pins-count"></span></button>
     <button id="countries-visited-btn" type="button" class="menu-action-btn">🌍 Countries visited <span id="menu-countries-count"></span></button>
     <button id="cities-btn" type="button" class="menu-action-btn">◆ Cities <span id="menu-cities-count"></span></button>
-    <div class="menu-toggle-row" id="cities-visibility-row">
-      <span>◆ Show cities on globe</span>
-      <div class="country-toggle on" id="cities-visibility-toggle"></div>
-    </div>
     <button id="export-btn" type="button" class="menu-action-btn">↓ Export backup</button>
     <button id="import-btn" type="button" class="menu-action-btn">↑ Import backup</button>
     <input id="import-input" type="file" accept=".json" style="display:none" />
@@ -707,6 +703,7 @@
     <button class="countries-back-btn" id="cities-back-btn">←</button>
     <span class="countries-panel-title">Cities</span>
     <span class="countries-selected-count" id="cities-count-label"></span>
+    <div class="country-toggle on" id="cities-visibility-toggle" title="Show cities on globe" style="flex-shrink:0"></div>
   </div>
   <div class="filter-bar">
     <button class="filter-toggle-btn" id="cities-filter-toggle">
@@ -2344,9 +2341,10 @@ document.querySelectorAll("#cities-filter-section .filter-pill").forEach(pill =>
     buildCitiesList();
   });
 });
-document.getElementById("cities-visibility-row").addEventListener("click", () => {
+document.getElementById("cities-visibility-toggle").addEventListener("click", (e) => {
+  e.stopPropagation();
   showCities = !showCities;
-  document.getElementById("cities-visibility-toggle").classList.toggle("on", showCities);
+  e.currentTarget.classList.toggle("on", showCities);
 });
 updateCitiesCount();
 
