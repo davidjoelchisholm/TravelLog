@@ -576,6 +576,28 @@
     transition: background 120ms;
   }
   .menu-toggle-row:hover { background: rgba(20,20,15,0.05); }
+  .city-add-bar {
+    display: flex; gap: 6px; align-items: center;
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid rgba(20,20,15,0.07);
+    flex-shrink: 0;
+  }
+  .city-add-bar input {
+    flex: 1; min-width: 0;
+    border: 1px solid rgba(20,20,15,0.18); border-radius: 5px;
+    background: rgba(20,20,15,0.03);
+    font: inherit; font-size: 11px; color: var(--ink);
+    padding: 6px 8px; outline: none;
+  }
+  .city-add-bar input::placeholder { color: rgba(20,20,15,0.38); }
+  .city-add-bar .add-btn { font-size: 9px; padding: 6px 10px; }
+  .city-row-remove {
+    flex-shrink: 0; border: none; background: none;
+    color: rgba(20,20,15,0.35); font-size: 14px; line-height: 1;
+    cursor: pointer; padding: 2px 4px;
+    transition: color 120ms;
+  }
+  .city-row-remove:hover { color: #b03a2e; }
 </style>
 </head>
 <body>
@@ -724,6 +746,11 @@
   </div>
   <div class="countries-search-wrap">
     <input id="cities-search" type="text" placeholder="Search cities…" autocomplete="off" />
+  </div>
+  <div class="city-add-bar">
+    <input id="city-add-name" type="text" placeholder="City name…" autocomplete="off" />
+    <input id="city-add-coords" type="text" placeholder="lat, lng or Maps link…" autocomplete="off" />
+    <button id="city-add-btn" class="add-btn" type="button" disabled>Add</button>
   </div>
   <div class="countries-list" id="cities-list"></div>
 </div>
@@ -1012,12 +1039,30 @@ function saveCitiesState() {
   try { localStorage.setItem(LS_CITIES_KEY, JSON.stringify(state)); } catch (_) {}
 }
 
+const LS_USER_CITIES_KEY = "globe-loader.user-cities.v1";
+function loadUserCities() {
+  try {
+    const raw = localStorage.getItem(LS_USER_CITIES_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(c => typeof c.name === "string" && typeof c.lat === "number" && typeof c.lng === "number") : [];
+  } catch (_) { return []; }
+}
+function saveUserCities() {
+  const arr = CITIES.filter(c => c.userAdded).map(c => ({ name: c.name, lat: c.lat, lng: c.lng }));
+  try { localStorage.setItem(LS_USER_CITIES_KEY, JSON.stringify(arr)); } catch (_) {}
+}
+
 const CITIES = [];
 (function initCities() {
   const state = loadCitiesState();
   MAJOR_CITIES.forEach(c => {
     const s = state[c.name] || {};
     CITIES.push({ name: c.name, lat: c.lat, lng: c.lng, visited: !!s.visited, imageUrl: s.imageUrl || null });
+  });
+  loadUserCities().forEach(c => {
+    const s = state[c.name] || {};
+    CITIES.push({ name: c.name, lat: c.lat, lng: c.lng, visited: !!s.visited, imageUrl: s.imageUrl || null, userAdded: true });
   });
 })();
 
@@ -1292,6 +1337,32 @@ function flyToCity(city, idx) {
     updateCityDots();
     if (idx != null && idx >= 0) showCityTip(idx);
   });
+}
+function addUserCity(name, lat, lng) {
+  const state = loadCitiesState();
+  const s = state[name] || {};
+  const city = { name, lat, lng, visited: !!s.visited, imageUrl: s.imageUrl || null, userAdded: true };
+  CITIES.push(city);
+  addCityDotEl(CITIES.length - 1);
+  saveUserCities();
+  return CITIES.length - 1;
+}
+function removeUserCity(idx) {
+  if (idx < 0 || idx >= CITIES.length || !CITIES[idx].userAdded) return;
+  const el = cityDotEls[idx];
+  if (el && el.parentNode) el.parentNode.removeChild(el);
+  cityDotEls.splice(idx, 1);
+  for (let j = idx; j < cityDotEls.length; j++) cityDotEls[j].dataset.cityIdx = j;
+  CITIES.splice(idx, 1);
+  if (activeCityIdx === idx) {
+    tip.classList.remove("show");
+    overlay._halo.classList.remove("show");
+    activeCityIdx = -1;
+  } else if (activeCityIdx > idx) {
+    activeCityIdx -= 1;
+  }
+  saveUserCities();
+  saveCitiesState();
 }
 
 let activeIdx = -1;
@@ -2298,7 +2369,17 @@ function buildCitiesList() {
     const idx = CITIES.indexOf(c);
     const row = document.createElement("div");
     row.className = "country-row" + (c.visited ? " on" : "");
-    row.innerHTML = "<span class=\"country-row-name\">" + c.name + "</span><div class=\"country-toggle\"></div>";
+    const removeBtn = c.userAdded
+      ? "<button class=\"city-row-remove\" title=\"Remove city\" data-remove=\"1\">✕</button>"
+      : "";
+    row.innerHTML = "<span class=\"country-row-name\">" + c.name + "</span>" + removeBtn + "<div class=\"country-toggle\"></div>";
+    if (c.userAdded) {
+      row.querySelector(".city-row-remove").addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeUserCity(CITIES.indexOf(c));
+        buildCitiesList();
+      });
+    }
     row.querySelector(".country-row-name").addEventListener("click", () => {
       closeCitiesPanel();
       flyToCity(c, idx);
@@ -2348,6 +2429,30 @@ document.getElementById("cities-visibility-toggle").addEventListener("click", (e
   showCities = !showCities;
   e.currentTarget.classList.toggle("on", showCities);
 });
+
+(function initCityAddBar() {
+  const nameEl   = document.getElementById("city-add-name");
+  const coordsEl = document.getElementById("city-add-coords");
+  const addBtn   = document.getElementById("city-add-btn");
+  function validate() {
+    const hasName   = nameEl.value.trim().length > 0;
+    const hasCoords = !!parseLatLng(coordsEl.value);
+    addBtn.disabled = !(hasName && hasCoords);
+  }
+  nameEl.addEventListener("input", validate);
+  coordsEl.addEventListener("input", validate);
+  addBtn.addEventListener("click", () => {
+    const name   = nameEl.value.trim();
+    const coords = parseLatLng(coordsEl.value);
+    if (!name || !coords) return;
+    addUserCity(name, coords.lat, coords.lng);
+    buildCitiesList();
+    nameEl.value = "";
+    coordsEl.value = "";
+    addBtn.disabled = true;
+  });
+})();
+
 updateCitiesCount();
 
 function refreshCountryList() {
