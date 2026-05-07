@@ -646,7 +646,10 @@
   <div class="menu-drawer-body">
     <button id="pins-btn" type="button" class="menu-action-btn">📍 Pins <span id="menu-pins-count"></span></button>
     <button id="countries-visited-btn" type="button" class="menu-action-btn">🌍 Countries visited <span id="menu-countries-count"></span></button>
-    <button id="cities-btn" type="button" class="menu-action-btn">◆ Cities <span id="menu-cities-count"></span></button>
+    <div style="display:flex;align-items:center;gap:0;">
+      <button id="cities-btn" type="button" class="menu-action-btn" style="flex:1;border-radius:6px 0 0 6px;border-right:none;">◆ Cities <span id="menu-cities-count"></span></button>
+      <div class="country-toggle on" id="cities-visibility-toggle" title="Show on globe" style="flex-shrink:0;margin:0 14px 0 12px;"></div>
+    </div>
     <button id="export-btn" type="button" class="menu-action-btn">↓ Export backup</button>
     <button id="import-btn" type="button" class="menu-action-btn">↑ Import backup</button>
     <input id="import-input" type="file" accept=".json" style="display:none" />
@@ -703,7 +706,6 @@
     <button class="countries-back-btn" id="cities-back-btn">←</button>
     <span class="countries-panel-title">Cities</span>
     <span class="countries-selected-count" id="cities-count-label"></span>
-    <div class="country-toggle on" id="cities-visibility-toggle" title="Show cities on globe" style="flex-shrink:0"></div>
   </div>
   <div class="filter-bar">
     <button class="filter-toggle-btn" id="cities-filter-toggle">
