@@ -1474,7 +1474,7 @@ function pointerXY(e) {
 function onDown(e) {
   if (tip.classList.contains("show")) return;
   const isTouch = e.pointerType === "touch";
-  if (!isTouch && e.button !== 1) return;
+  if (!isTouch && e.button !== 0 && e.button !== 1) return;
   if (isTouch) {
     canvas.setPointerCapture(e.pointerId);
     activePointers.set(e.pointerId, [e.clientX, e.clientY]);
