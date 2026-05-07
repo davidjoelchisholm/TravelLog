@@ -666,7 +666,10 @@
     <button class="menu-close-btn" id="menu-close-btn" type="button">✕</button>
   </div>
   <div class="menu-drawer-body">
-    <button id="pins-btn" type="button" class="menu-action-btn">📍 Pins <span id="menu-pins-count"></span></button>
+    <div style="display:flex;align-items:center;gap:0;">
+      <button id="pins-btn" type="button" class="menu-action-btn" style="flex:1;border-radius:6px 0 0 6px;border-right:none;">📍 Pins <span id="menu-pins-count"></span></button>
+      <div class="country-toggle on" id="pins-visibility-toggle" title="Show on globe" style="flex-shrink:0;margin:0 14px 0 12px;"></div>
+    </div>
     <button id="countries-visited-btn" type="button" class="menu-action-btn">🌍 Countries visited <span id="menu-countries-count"></span></button>
     <div style="display:flex;align-items:center;gap:0;">
       <button id="cities-btn" type="button" class="menu-action-btn" style="flex:1;border-radius:6px 0 0 6px;border-right:none;">◆ Cities <span id="menu-cities-count"></span></button>
@@ -1067,6 +1070,7 @@ const CITIES = [];
 })();
 
 let showCities = true;
+let showPins = true;
 let activeCityIdx = -1;
 
 let SIZE = 560;
@@ -1425,6 +1429,11 @@ function isFront(lng, lat) {
 }
 
 function updateDots() {
+  if (!showPins) {
+    dotEls.forEach(el => { el.style.display = "none"; });
+    if (activeIdx >= 0) hideTip(activeIdx);
+    return;
+  }
   for (let i = 0; i < PLACES.length; i++) {
     const p = PLACES[i];
     const el = dotEls[i];
@@ -2429,6 +2438,11 @@ document.getElementById("cities-visibility-toggle").addEventListener("click", (e
   e.stopPropagation();
   showCities = !showCities;
   e.currentTarget.classList.toggle("on", showCities);
+});
+document.getElementById("pins-visibility-toggle").addEventListener("click", (e) => {
+  e.stopPropagation();
+  showPins = !showPins;
+  e.currentTarget.classList.toggle("on", showPins);
 });
 
 (function initCityAddBar() {
